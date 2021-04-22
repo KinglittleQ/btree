@@ -65,6 +65,20 @@ struct BTree {
     root = new BTreeNode(1); // is also a leaf node
   }
 
+  ~BTree() { deallocate(root); }
+
+  void deallocate(BTreeNode *node) {
+    if (node->is_leaf()) {
+      // it is responsible for user to deallocate value pointers
+      delete node;
+    } else {
+      for (int i = 0; i < node->nptrs; i++) {
+        deallocate((BTreeNode *)(node->ptrs[i]));
+      }
+      delete node;
+    }
+  }
+
   // no duplicate keys
   bool search(const K &key, V *value) const {
     return search_impl(root, key, value);
@@ -181,7 +195,7 @@ struct BTree {
     left_node->ptrs[M - 1] = right_node;              // point to the right node
 
     int idx = M - 2;
-    for (int i = M - 1; i >= 0; i--) {  // M ptrs,keys in total
+    for (int i = M - 1; i >= 0; i--) { // M ptrs,keys in total
       Ptr p;
       K k;
       if (i == key_pos) {
@@ -220,10 +234,8 @@ struct BTree {
     assert(node->nkeys == MAX_KEYS);
     assert(node->nptrs == M);
 
-
     int key_pos = find_key_pos(node, key);
     int ptr_pos = key_pos + 1;
-    printf("split_internal_node: key=%d key_pos=%d\n", key, key_pos);
 
     int nptrs_left = (M + 1) / 2;
     int nptrs_right = (M + 1) - nptrs_left;
@@ -236,7 +248,7 @@ struct BTree {
     assert(nkeys_left > 0 && nkeys_right > 0);
 
     int idx = M - 1;
-    for (int i = M; i >= 0; i--) {  // (M + 1) ptrs in total
+    for (int i = M; i >= 0; i--) { // (M + 1) ptrs in total
       Ptr p;
       if (i == ptr_pos) {
         p = ptr;
@@ -257,7 +269,7 @@ struct BTree {
     *new_key = 0;
 
     idx = MAX_KEYS - 1;
-    for (int i = MAX_KEYS; i >= 0; i--) {  // M keys in total
+    for (int i = MAX_KEYS; i >= 0; i--) { // M keys in total
       K k;
       if (i == key_pos) {
         k = key;
