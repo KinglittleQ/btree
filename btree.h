@@ -67,10 +67,10 @@ struct BTree {
 
   // no duplicate keys
   bool search(const K &key, V *value) const {
-    return search_internel(root, key, value);
+    return search_impl(root, key, value);
   }
 
-  bool search_internel(const BTreeNode *node, const K &key, V *value) const {
+  bool search_impl(const BTreeNode *node, const K &key, V *value) const {
     if (node == nullptr || node->nptrs == 0) {
       return false;
     }
@@ -86,11 +86,11 @@ struct BTree {
     } else {
       for (int i = 0; i < node->nkeys; i++) {
         if (C::compare(key, node->keys[i]) < 0) { // k < ki
-          return search_internel(node->get_child(i), key, value);
+          return search_impl(node->get_child(i), key, value);
         }
       }
 
-      return search_internel(node->get_child(node->nptrs - 1), key, value);
+      return search_impl(node->get_child(node->nptrs - 1), key, value);
     }
 
     return false; // could not find key
