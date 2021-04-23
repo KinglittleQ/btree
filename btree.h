@@ -84,7 +84,7 @@ struct BTree {
   }
 
   bool search_impl(const BTreeNode *node, const K &key, V *value) const {
-    if (node == nullptr || node->nptrs == 0) {
+    if (node == nullptr or node->nptrs == 0) {
       return false;
     }
 
@@ -288,7 +288,7 @@ struct BTree {
 
     int nkeys_left = nptrs_left - 1;
     int nkeys_right = nptrs_right - 1;
-    assert(nkeys_left > 0 && nkeys_right > 0);
+    assert(nkeys_left > 0 and nkeys_right > 0);
 
     int idx = M - 1;
     for (int i = M; i >= 0; i--) {  // (M + 1) ptrs in total
@@ -403,7 +403,7 @@ struct BTree {
       }
     }
 
-    if (node->nkeys < MIN_KEYS && !is_root) {
+    if (node->nkeys < MIN_KEYS and !is_root) {
       // re-arange or merge
       auto parent = path->back();  // must be an internal node
       int key_pos = find_key_pos(parent, min_key) - 1;
