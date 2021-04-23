@@ -9,7 +9,11 @@
 namespace btree {
 
 constexpr int M = 5; // branching factor
+constexpr int MIN_PTRS = (M + 1) / 2;
+
 constexpr int MAX_KEYS = M - 1;
+constexpr int MIN_KEYS = M / 2;
+
 constexpr int NULL_KEY = -1;
 
 using K = int;
@@ -306,12 +310,229 @@ struct BTree {
     int key_pos = find_key_pos(node, key);
     int ptr_pos = key_pos + node->nptrs - node->nkeys;
 
-    node->keys[node->nkeys] = key;
-    node->ptrs[node->nptrs] = ptr;
-    std::swap(node->keys[node->nkeys], node->keys[key_pos]);
-    std::swap(node->ptrs[node->nptrs], node->ptrs[ptr_pos]);
+    memmove(node->keys + key_pos + 1, node->keys + key_pos, sizeof(K) * (node->nkeys - key_pos));
+    memmove(node->ptrs + ptr_pos + 1, node->ptrs + ptr_pos, sizeof(Ptr) * (node->nptrs - ptr_pos));
+
+    node->keys[key_pos] = key;
+    node->ptrs[ptr_pos] = ptr;
+
     node->nkeys += 1;
     node->nptrs += 1;
+
+    return true;
+  }
+
+  bool remove(const K &key) {
+    std::vector<BTreeNode *> path;
+    if (!search_path(root, key, &path)) {
+      return false;
+    }
+
+    const auto &node = path.back();
+
+    int key_pos;
+    for (key_pos = 0; key_pos < node->nkeys; key_pos++) {
+      if (C::compare(key, node->keys[key_pos]) == 0) {
+        break;
+      }
+    }
+    if (key_pos == node->nkeys) {
+      return false;
+    }
+
+    return remove_impl(key_pos, &path);
+  }
+
+  bool remove_impl(const int ptr_pos, std::vector<BTreeNode *> *path) {
+    assert(path->size() > 0);
+
+    auto node = path->back();
+    path->pop_back();
+
+    bool is_root = path->empty();
+
+    bool remove_first;
+    K min_key;
+    remove_in_node(node, ptr_pos, &min_key);
+
+    if (ptr_pos == 0) {
+      if (!is_root) {
+        auto parent = path->back();
+        update_key(parent, min_key);
+      }
+    }
+
+    if (node->nkeys < MIN_KEYS && !is_root) {
+      // re-arange or merge
+      auto parent = path->back();  // must be an internal node
+      int key_pos = find_key_pos(parent, min_key) - 1;
+      int left_pos = key_pos;  // left ptr pos
+      int right_pos = key_pos + 2;  // right ptr pos
+
+      // borrow from left
+      if (left_pos >= 0) {
+        auto left_node = parent->get_child(left_pos);
+        if (left_node->nkeys > MIN_KEYS) {
+          return rearange_left(parent, left_node, node, key_pos);
+        }
+      }
+
+      // borrow from right
+      if (right_pos < parent->nptrs) {
+        auto right_node = parent->get_child(right_pos);
+        if (right_node->nkeys > MIN_KEYS) {
+          return rearange_right(parent, right_node, node, key_pos);
+        }
+      }
+
+      // merge to left
+      if (left_pos >= 0) {
+        printf("merge left\n");
+        auto left_node = parent->get_child(left_pos);
+        assert(left_node->nkeys + node->nkeys <= MAX_KEYS);
+
+        merge_left(parent, left_node, node, key_pos);
+        return remove_impl(key_pos + 1, path);
+      }
+
+      // merge to right
+      if (right_pos < parent->nptrs) {
+        printf("merge right\n");
+        auto right_node = parent->get_child(right_pos);
+        assert(right_node->nkeys + node->nkeys <= MAX_KEYS);
+
+        merge_right(parent, right_node, node, key_pos);
+        return remove_impl(key_pos + 1, path);
+      }
+    }
+
+
+    return true;
+  }
+
+  bool remove_in_node(BTreeNode *node, const int ptr_pos, K *min_key) {
+    if (!node->is_leaf()) {
+      *min_key = node->keys[0];
+    }
+
+    int key_pos = node->is_leaf() ? ptr_pos : std::max(ptr_pos - 1, 0);
+    memmove(node->keys + key_pos, node->keys + key_pos + 1, sizeof(K) * (node->nkeys - 1 - key_pos));
+    memmove(node->ptrs + ptr_pos, node->ptrs + ptr_pos + 1, sizeof(Ptr) * (node->nptrs - 1 - ptr_pos));
+
+    node->nkeys -= 1;
+    node->nptrs -= 1;
+
+    if (node->is_leaf()) {
+      *min_key = node->keys[0];
+    }
+
+    return true;
+  }
+
+  bool update_key(BTreeNode *node, const K &key) {
+    int key_pos;
+    for (key_pos = 0; key_pos < node->nkeys; key_pos++) {
+      if (C::compare(key, node->keys[key_pos]) < 0) {
+        break;
+      }
+    }
+    key_pos = key_pos - 1;
+    if (key_pos < 0) {
+      return true;
+    }
+
+    assert(key_pos < node->nkeys);  // could not find key
+    node->keys[key_pos] = key;
+    return true;
+  }
+
+  bool rearange_left(BTreeNode *parent, BTreeNode *left_node,
+        BTreeNode *node, const int key_pos) {
+    /// move the rightmost K,V from left_node to node
+
+    // right shift one to make room for the new coming key and ptr 
+    memmove(node->keys + 1, node->keys, sizeof(K) * node->nkeys);
+    memmove(node->ptrs + 1, node->ptrs, sizeof(Ptr) * node->nptrs);
+
+    if (node->is_leaf()) {
+      node->keys[0] = left_node->keys[left_node->nkeys - 1];  // leaf
+    } else {
+      node->keys[0] = parent->keys[key_pos];
+    }
+    node->ptrs[0] = left_node->ptrs[left_node->nptrs - 1];
+    parent->keys[key_pos] = left_node->keys[left_node->nkeys - 1];  // update parent
+
+    node->nkeys += 1;
+    node->nptrs += 1;
+    left_node->nkeys -= 1;
+    left_node->nptrs -= 1;
+
+    return true;
+  }
+
+  bool rearange_right(BTreeNode *parent, BTreeNode *right_node,
+        BTreeNode *node, const int key_pos) {
+    /// move the leftmost K,V from right_node to node
+
+    if (node->is_leaf()) {
+      node->keys[node->nkeys] = right_node->keys[0];
+    } else {
+      node->keys[node->nkeys] = parent->keys[key_pos + 1];
+    }
+    node->ptrs[node->nptrs] = right_node->ptrs[0];
+    parent->keys[key_pos + 1] = right_node->keys[node->is_leaf() ? 1 : 0];  // update parent
+
+    right_node->nkeys -= 1;
+    right_node->nptrs -= 1;
+
+    memmove(right_node->keys, right_node->keys + 1, sizeof(K) * right_node->nkeys);
+    memmove(right_node->ptrs, right_node->ptrs + 1, sizeof(Ptr) * right_node->nptrs);
+
+    node->nkeys += 1;
+    node->nptrs += 1;
+
+    return true;
+  }
+
+  bool merge_left(BTreeNode *parent, BTreeNode *left_node, BTreeNode *node, const int key_pos) {
+    memcpy(left_node->ptrs + left_node->nptrs, node->ptrs, sizeof(Ptr) * node->nptrs);
+    if (node->is_leaf()) {
+      memcpy(left_node->keys + left_node->nkeys, node->keys, sizeof(K) * node->nkeys);
+
+      left_node->nkeys += node->nkeys;
+    } else {
+      left_node->keys[left_node->nkeys] = parent->keys[key_pos];
+      memcpy(left_node->keys + left_node->nkeys + 1, node->keys, sizeof(K) * node->nkeys);
+
+      left_node->nkeys += node->nkeys + 1;
+    }
+
+    left_node->nptrs += node->nptrs;
+
+    return true;
+  }
+
+  bool merge_right(BTreeNode *parent, BTreeNode *right_node, BTreeNode *node, const int key_pos) {
+    // right shift to make room for node ptrs
+    memmove(right_node->ptrs + node->nptrs, right_node->ptrs, sizeof(Ptr) * right_node->nptrs);
+    memcpy(right_node->ptrs, node->ptrs, sizeof(Ptr) * node->nptrs);
+
+    if (node->is_leaf()) {
+      memmove(right_node->keys + node->nkeys, right_node->keys, sizeof(K) * right_node->nkeys);
+      memcpy(right_node->keys, node->keys, sizeof(K) * node->nkeys);
+
+      right_node->nkeys += node->nkeys;
+    } else {
+      memmove(right_node->keys + node->nkeys + 1, right_node->keys, sizeof(K) * right_node->nkeys);
+      memcpy(right_node->keys, node->keys, sizeof(K) * node->nkeys);
+      right_node->keys[node->nkeys] = parent->keys[key_pos + 1];
+
+      right_node->nkeys += node->nkeys + 1;
+    }
+    parent->keys[key_pos + 1] = parent->keys[key_pos];
+
+    right_node->nptrs += node->nptrs;
+    return true;
   }
 
   BTreeNode *root;

@@ -4,9 +4,18 @@
 #include <string>
 #include <vector>
 
-void tree_insert(btree::BTree &tree, int key, std::vector<std::string> &strs) {
+std::vector<std::string> strs(100);
+
+void tree_insert(btree::BTree &tree, int key) {
   tree.insert(key, &strs[key]);
   printf("After insert %d:\n", key);
+  btree::utils::print_btree(tree);
+  printf("---------------------\n");
+}
+
+void tree_remove(btree::BTree &tree, int key) {
+  tree.remove(key);
+  printf("After remove %d:\n", key);
   btree::utils::print_btree(tree);
   printf("---------------------\n");
 }
@@ -19,33 +28,66 @@ void test_print() {
   std::string s4 = "s4";
   std::string s5 = "s5";
 
+
+  for (int i = 0; i < strs.size(); i++) {
+    strs[i] = "s" + std::to_string(i);
+  }
+
+  tree_insert(tree, 3);
+  tree_insert(tree, 1);
+  tree_insert(tree, 2);
+  tree_insert(tree, 4);
+  tree_insert(tree, 5);
+  tree_insert(tree, 7);
+
+  // tree_insert(tree, 10);
+  // tree_insert(tree, 8);
+  // tree_insert(tree, 13);
+  // tree_insert(tree, 14);
+  // tree_insert(tree, 15);
+
+  for (int i = 15; i < 30; i++) {
+    tree_insert(tree, i * 2);
+  }
+
+  tree_remove(tree, 5);
+  // tree_remove(tree, 1);
+
+  // tree_insert(tree, 1);
+  // tree_remove(tree, 1);
+  // tree_remove(tree, 15);
+  // tree_insert(tree, 4);
+
+  // tree_remove(tree, 2);
+  // tree_remove(tree, 4);
+  // tree_remove(tree, 4);
+
+  return;
+}
+
+void test_by_cmd() {
+  btree::BTree tree;
+
   std::vector<std::string> strs(100);
   for (int i = 0; i < strs.size(); i++) {
     strs[i] = "s" + std::to_string(i);
   }
 
-  tree_insert(tree, 3, strs);
-  tree_insert(tree, 1, strs);
-  tree_insert(tree, 2, strs);
-  tree_insert(tree, 4, strs);
-  tree_insert(tree, 5, strs);
-  tree_insert(tree, 7, strs);
-
-  tree_insert(tree, 10, strs);
-  tree_insert(tree, 8, strs);
-  tree_insert(tree, 13, strs);
-  tree_insert(tree, 14, strs);
-  // tree_insert(tree, 15, strs);
-
-  for (int i = 15; i < 20; i++) {
-    tree_insert(tree, i, strs);
+  std::string action;
+  int key;
+  while (action != "quit") {
+    std::cin >> action >> key;
+    if (action == "insert") {
+      tree_insert(tree, key);
+    } else if (action == "remove") {
+      tree_remove(tree, key);
+    }
   }
-
-  return;
 }
 
 int main(void) {
-  test_print();
+  // test_print();
+  test_by_cmd();
 
   return 0;
 }
