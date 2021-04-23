@@ -8,7 +8,7 @@
 
 namespace btree {
 
-constexpr int M = 5; // branching factor
+constexpr int M = 5;  // branching factor
 constexpr int MIN_PTRS = (M + 1) / 2;
 
 constexpr int MAX_KEYS = M - 1;
@@ -21,7 +21,9 @@ using V = std::string;
 using Ptr = void *;
 
 struct KeyComparator {
-  static int compare(const K &k1, const K &k2) { return k1 - k2; }
+  static int compare(const K &k1, const K &k2) {
+    return k1 - k2;
+  }
 };
 
 using C = KeyComparator;
@@ -29,14 +31,17 @@ using C = KeyComparator;
 // template <class K>
 struct BTreeNode {
   // int level = 0;
-  char type;     // 0 for internal node, 1 for leaf node
-  int nkeys = 0; // number of inserted keys
-  int nptrs = 0; // number of links
+  char type;      // 0 for internal node, 1 for leaf node
+  int nkeys = 0;  // number of inserted keys
+  int nptrs = 0;  // number of links
 
   K keys[M - 1];
   Ptr ptrs[M];
+  struct BTreeNode *prev = nullptr;
 
-  BTreeNode(int type = 0) : type(type) { std::fill_n(ptrs, M, nullptr); }
+  BTreeNode(int type = 0) : type(type) {
+    std::fill_n(ptrs, M, nullptr);
+  }
 
   inline const V *get_value(int idx) const {
     return static_cast<const V *>(ptrs[idx]);
@@ -46,30 +51,20 @@ struct BTreeNode {
     return static_cast<BTreeNode *>(ptrs[idx]);
   }
 
-  inline void insert(const K &key, const Ptr &ptr) {
-    assert(nkeys < MAX_KEYS);
-
-    if (key != NULL_KEY) {
-      keys[nkeys] = key;
-      nkeys += 1;
-    }
-
-    if (ptr != nullptr) {
-      ptrs[nptrs] = ptr;
-      nptrs += 1;
-    }
+  inline bool is_leaf() const {
+    return type == 1;
   }
-
-  inline bool is_leaf() const { return type == 1; }
 };
 
 // template <class K>
 struct BTree {
   BTree() {
-    root = new BTreeNode(1); // is also a leaf node
+    root = new BTreeNode(1);  // is also a leaf node
   }
 
-  ~BTree() { deallocate(root); }
+  ~BTree() {
+    deallocate(root);
+  }
 
   void deallocate(BTreeNode *node) {
     if (node->is_leaf()) {
@@ -93,9 +88,9 @@ struct BTree {
       return false;
     }
 
-    if (node->is_leaf()) { // leaf
+    if (node->is_leaf()) {  // leaf
       for (int i = 0; i < node->nkeys; i++) {
-        if (C::compare(key, node->keys[i]) == 0) { // k == ki
+        if (C::compare(key, node->keys[i]) == 0) {  // k == ki
           *value = *(node->get_value(i));
           return true;
         }
@@ -103,7 +98,7 @@ struct BTree {
 
     } else {
       for (int i = 0; i < node->nkeys; i++) {
-        if (C::compare(key, node->keys[i]) < 0) { // k < ki
+        if (C::compare(key, node->keys[i]) < 0) {  // k < ki
           return search_impl(node->get_child(i), key, value);
         }
       }
@@ -111,7 +106,7 @@ struct BTree {
       return search_impl(node->get_child(node->nptrs - 1), key, value);
     }
 
-    return false; // could not find key
+    return false;  // could not find key
   }
 
   bool search_path(BTreeNode *node, const K &key,
@@ -119,11 +114,11 @@ struct BTree {
     assert(node != nullptr);
 
     path->push_back(node);
-    if (node->is_leaf()) { // leaf
+    if (node->is_leaf()) {  // leaf
       return true;
     } else {
       for (int i = 0; i < node->nkeys; i++) {
-        if (C::compare(key, node->keys[i]) < 0) { // k < ki
+        if (C::compare(key, node->keys[i]) < 0) {  // k < ki
           return search_path(node->get_child(i), key, path);
         }
       }
@@ -131,7 +126,7 @@ struct BTree {
       return search_path(node->get_child(node->nptrs - 1), key, path);
     }
 
-    return false; // could not find key
+    return false;  // could not find key
   }
 
   int find_key_pos(const BTreeNode *node, const K &key) {
@@ -144,7 +139,7 @@ struct BTree {
     return key_pos;
   }
 
-  bool sequential_scan() {
+  bool seq_scan() {
     auto node = root;
     while (!node->is_leaf()) {
       node = node->get_child(0);
@@ -160,6 +155,27 @@ struct BTree {
       }
       std::cout << std::endl;
       node = node->get_child(M - 1);
+    }
+
+    return true;
+  }
+
+  bool reverse_seq_scan() {
+    auto node = root;
+    while (!node->is_leaf()) {
+      node = node->get_child(node->nptrs - 1);
+    }
+
+    int id = 0;
+    while (node != nullptr) {
+      assert(node->is_leaf());
+
+      std::cout << "Leaf " << id++ << ": ";
+      for (int i = node->nkeys - 1; i >= 0; i--) {
+        std::cout << node->keys[i] << " ";
+      }
+      std::cout << std::endl;
+      node = node->prev;
     }
 
     return true;
@@ -189,7 +205,7 @@ struct BTree {
       }
 
       if (path->empty()) {
-        auto new_root = new BTreeNode(0); // not a leaf node
+        auto new_root = new BTreeNode(0);  // not a leaf node
         new_root->keys[0] = new_key;
         new_root->ptrs[0] = node;
         new_root->ptrs[1] = new_node;
@@ -216,11 +232,13 @@ struct BTree {
     auto &left_node = node;
     auto right_node = new BTreeNode(node->type);
 
-    right_node->ptrs[M - 1] = left_node->ptrs[M - 1]; // copy the next node link
-    left_node->ptrs[M - 1] = right_node;              // point to the right node
+    right_node->ptrs[M - 1] =
+        left_node->ptrs[M - 1];           // copy the next node link
+    left_node->ptrs[M - 1] = right_node;  // point to the right node
+    right_node->prev = left_node;         // point to the left node
 
     int idx = M - 2;
-    for (int i = M - 1; i >= 0; i--) { // M ptrs,keys in total
+    for (int i = M - 1; i >= 0; i--) {  // M ptrs,keys in total
       Ptr p;
       K k;
       if (i == key_pos) {
@@ -273,7 +291,7 @@ struct BTree {
     assert(nkeys_left > 0 && nkeys_right > 0);
 
     int idx = M - 1;
-    for (int i = M; i >= 0; i--) { // (M + 1) ptrs in total
+    for (int i = M; i >= 0; i--) {  // (M + 1) ptrs in total
       Ptr p;
       if (i == ptr_pos) {
         p = ptr;
@@ -294,7 +312,7 @@ struct BTree {
     *new_key = 0;
 
     idx = MAX_KEYS - 1;
-    for (int i = MAX_KEYS; i >= 0; i--) { // M keys in total
+    for (int i = MAX_KEYS; i >= 0; i--) {  // M keys in total
       K k;
       if (i == key_pos) {
         k = key;
@@ -342,8 +360,6 @@ struct BTree {
     node->nkeys += 1;
     node->nptrs += 1;
 
-    std::cout << "next ptr: " << node->ptrs[M - 1] << std::endl;
-
     return true;
   }
 
@@ -389,10 +405,10 @@ struct BTree {
 
     if (node->nkeys < MIN_KEYS && !is_root) {
       // re-arange or merge
-      auto parent = path->back(); // must be an internal node
+      auto parent = path->back();  // must be an internal node
       int key_pos = find_key_pos(parent, min_key) - 1;
-      int left_pos = key_pos;      // left ptr pos
-      int right_pos = key_pos + 2; // right ptr pos
+      int left_pos = key_pos;       // left ptr pos
+      int right_pos = key_pos + 2;  // right ptr pos
 
       // borrow from left
       if (left_pos >= 0) {
@@ -465,7 +481,7 @@ struct BTree {
       return true;
     }
 
-    assert(key_pos < node->nkeys); // could not find key
+    assert(key_pos < node->nkeys);  // could not find key
     node->keys[key_pos] = key;
     return true;
   }
@@ -479,13 +495,13 @@ struct BTree {
     memmove(node->ptrs + 1, node->ptrs, sizeof(Ptr) * node->nptrs);
 
     if (node->is_leaf()) {
-      node->keys[0] = left_node->keys[left_node->nkeys - 1]; // leaf
+      node->keys[0] = left_node->keys[left_node->nkeys - 1];  // leaf
     } else {
       node->keys[0] = parent->keys[key_pos];
     }
     node->ptrs[0] = left_node->ptrs[left_node->nptrs - 1];
     parent->keys[key_pos] =
-        left_node->keys[left_node->nkeys - 1]; // update parent
+        left_node->keys[left_node->nkeys - 1];  // update parent
 
     node->nkeys += 1;
     node->nptrs += 1;
@@ -506,7 +522,7 @@ struct BTree {
     }
     node->ptrs[node->nptrs] = right_node->ptrs[0];
     parent->keys[key_pos + 1] =
-        right_node->keys[node->is_leaf() ? 1 : 0]; // update parent
+        right_node->keys[node->is_leaf() ? 1 : 0];  // update parent
 
     right_node->nkeys -= 1;
     right_node->nptrs -= 1;
@@ -530,7 +546,11 @@ struct BTree {
       memcpy(left_node->keys + left_node->nkeys, node->keys,
              sizeof(K) * node->nkeys);
 
-      left_node->ptrs[M - 1] = node->ptrs[M - 1]; // next ptr
+      left_node->ptrs[M - 1] = node->ptrs[M - 1];  // next ptr
+      if (key_pos + 1 < parent->nkeys) {           // prev ptr
+        parent->get_child(key_pos + 1)->prev = left_node;
+      }
+
       left_node->nkeys += node->nkeys;
     } else {
       left_node->keys[left_node->nkeys] = parent->keys[key_pos];
@@ -557,9 +577,11 @@ struct BTree {
               sizeof(K) * right_node->nkeys);
       memcpy(right_node->keys, node->keys, sizeof(K) * node->nkeys);
 
-      if (key_pos - 1 >= 0) {
+      if (key_pos - 1 >= 0) {  // next ptr
         parent->get_child(key_pos - 1)->ptrs[M - 1] = right_node;
       }
+      right_node->prev = node->prev;  // prev ptr
+
       right_node->nkeys += node->nkeys;
     } else {
       memmove(right_node->keys + node->nkeys + 1, right_node->keys,
@@ -580,4 +602,4 @@ struct BTree {
   // int size;  // number of inserted keys
 };
 
-} // namespace btree
+}  // namespace btree

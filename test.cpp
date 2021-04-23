@@ -1,11 +1,11 @@
-#include "btree.h"
-#include "utils.h"
 #include <iostream>
 #include <string>
 #include <vector>
+#include "btree.h"
+#include "utils.h"
 
 class TestCase {
-public:
+ public:
   TestCase(int size = 100) {
     strs_.resize(size);
     for (int i = 0; i < strs_.size(); i++) {
@@ -48,7 +48,9 @@ public:
       if (action == "q") {
         break;
       } else if (action == "s") {
-        tree_.sequential_scan();
+        tree_.seq_scan();
+      } else if (action == "rs") {
+        tree_.reverse_seq_scan();
       } else {
         std::cin >> key;
         if (action == "i") {
@@ -60,7 +62,7 @@ public:
     }
   }
 
-private:
+ private:
   std::vector<std::string> strs_;
   btree::BTree tree_;
 };

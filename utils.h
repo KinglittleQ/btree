@@ -1,8 +1,8 @@
 #pragma once
 
-#include "btree.h"
 #include <iostream>
 #include <string>
+#include "btree.h"
 
 namespace btree {
 namespace utils {
@@ -19,14 +19,14 @@ void print_btree(std::string prefix, const BTreeNode *node, K key, bool is_last,
 
     // print the value of the node
     switch (key) {
-    case ROOT_MARK:
-      printf("ROOT");
-      break;
-    case END_MARK:
-      printf("NULL");
-      break;
-    default:
-      printf("%04d", key);
+      case ROOT_MARK:
+        printf("ROOT");
+        break;
+      case END_MARK:
+        printf("NULL");
+        break;
+      default:
+        printf("%04d", key);
     }
 
     if (is_value) {
@@ -55,5 +55,5 @@ void print_btree(const BTree &tree) {
   print_btree("", tree.root, ROOT_MARK, false, false);
 }
 
-} // namespace utils
-} // namespace btree
+}  // namespace utils
+}  // namespace btree
