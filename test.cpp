@@ -84,7 +84,7 @@ class TestCase {
 
       if (action == "q") {
         break;
-      } else if (action == "s") {
+      } else if (action == "ss") {
         tree_.seq_scan();
       } else if (action == "rs") {
         tree_.reverse_seq_scan();

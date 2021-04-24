@@ -8,8 +8,8 @@ $ g++ test.cpp -o test && ./test
 
 - i <key1, key2, ...>: insert keys
 - d <key1, key2, ...>: delete keys
-- s:                   sequential scan
-- rs:                  reverse sequential scan
+- ss:                  sequential scan
+- rs:                  reversal scan
 
 **For Example:**
 
