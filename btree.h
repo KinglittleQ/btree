@@ -403,6 +403,13 @@ struct BTree {
       }
     }
 
+    if (node->nkeys == 0) {
+      assert(is_root and node->nptrs == 1);
+      auto new_root = node->get_child(0);
+      delete root;
+      root = new_root;
+    }
+
     if (node->nkeys < MIN_KEYS and !is_root) {
       // re-arange or merge
       auto parent = path->back();  // must be an internal node
@@ -561,6 +568,7 @@ struct BTree {
     }
 
     left_node->nptrs += node->nptrs;
+    delete node;
 
     return true;
   }
@@ -594,6 +602,8 @@ struct BTree {
     parent->keys[key_pos + 1] = parent->keys[key_pos];
 
     right_node->nptrs += node->nptrs;
+    delete node;
+
     return true;
   }
 
