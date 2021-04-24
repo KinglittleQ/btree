@@ -2,14 +2,16 @@ A C++ implementation of B+ tree.
 
 **How to Run:**
 
-$ g++ test.cpp -o test && ./test
+``` shell
+g++ test.cpp -o test && ./test
+```
 
 **Command:**
 
-- i <key1, key2, ...>: insert keys
-- d <key1, key2, ...>: delete keys
-- ss:                  sequential scan
-- rs:                  reversal scan
+- `i <key1, key2, ...>`: insert keys
+- `d <key1, key2, ...>`: delete keys
+- `ss`:                  sequential scan
+- `rs`:                  reversal scan
 
 **For Example:**
 
