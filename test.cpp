@@ -1,8 +1,44 @@
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include "btree.h"
 #include "utils.h"
+
+class CmdParser {
+ public:
+  CmdParser() = default;
+
+  void parse() {
+    keys_.clear();
+    action_.clear();
+    std::getline(std::cin, line_);
+    iss_ = std::istringstream(line_);
+
+    iss_ >> action_;
+    if (action_ == "i" or action_ == "d") {
+      int key;
+      do {
+        iss_ >> key;
+        keys_.push_back(key);
+      } while (!iss_.eof());
+    }
+  }
+
+  const std::string &action() const {
+    return action_;
+  }
+
+  const std::vector<int> &keys() const {
+    return keys_;
+  }
+
+ private:
+  std::string action_;
+  std::vector<int> keys_;
+  std::string line_;
+  std::istringstream iss_;
+};
 
 class TestCase {
  public:
@@ -13,38 +49,39 @@ class TestCase {
     }
   }
 
-  void insert(int key) {
-    tree_.insert(key, &strs_[key]);
-    printf("After insert %d:\n", key);
+  void insert(std::vector<int> keys) {
+    printf("After insert");
+    for (const auto &key : keys) {
+      tree_.insert(key, &strs_[key]);
+      printf(" %d", key);
+    }
+    printf(":\n");
+
     btree::utils::print_btree(tree_);
     printf("---------------------\n");
   }
 
-  void remove(int key) {
-    tree_.remove(key);
-    printf("After remove %d:\n", key);
+  void remove(std::vector<int> keys) {
+    printf("After remove");
+    for (const auto &key : keys) {
+      tree_.remove(key);
+      printf(" %d", key);
+    }
+    printf(":\n");
+
     btree::utils::print_btree(tree_);
     printf("---------------------\n");
-  }
-
-  void test_print() {
-    insert(3);
-    insert(1);
-    insert(2);
-    insert(4);
-    insert(5);
-    insert(7);
-
-    remove(5);
-
-    return;
   }
 
   void test_in_cmd() {
-    std::string action;
+    CmdParser parser;
     int key;
+    std::string action;
+
     while (action != "q") {
-      std::cin >> action;
+      parser.parse();
+      action = parser.action();
+
       if (action == "q") {
         break;
       } else if (action == "s") {
@@ -52,11 +89,10 @@ class TestCase {
       } else if (action == "rs") {
         tree_.reverse_seq_scan();
       } else {
-        std::cin >> key;
         if (action == "i") {
-          insert(key);
+          insert(parser.keys());
         } else if (action == "d") {
-          remove(key);
+          remove(parser.keys());
         }
       }
     }
